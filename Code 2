@@ -1,0 +1,52 @@
+import os
+import sys
+import torch
+import torchvision
+from torchvision.models.detection import FasterRCNN
+from torchvision.transforms import functional as F
+from PIL import Image, ImageDraw
+
+# Redirect stderr to null device to suppress warnings
+sys.stderr = open(os.devnull, 'w')
+
+# Load a pre-trained Faster R-CNN model
+def load_model():
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    model.eval()
+    return model
+
+# Perform object detection on the image
+def detect_objects(image, model, confidence_threshold=0.45):
+    # Convert image to tensor
+    image_tensor = F.to_tensor(image)
+    image_tensor = image_tensor.unsqueeze(0)
+    
+    # Perform inference
+    with torch.no_grad():
+        predictions = model(image_tensor)
+    
+    # Filter predictions based on confidence threshold
+    filtered_predictions = [(box, score) for box, score in zip(predictions[0]['boxes'], 
+                            predictions[0]['scores']) if score >= confidence_threshold]
+    
+    # Draw bounding boxes on the image
+    draw = ImageDraw.Draw(image)
+    for box, _ in filtered_predictions:
+        draw.rectangle([(box[0], box[1]), (box[2], box[3])], outline="red", width=3)
+    
+    return len(filtered_predictions), image
+
+# Load and preprocess image
+image_path = r'C:\Users\DBZ KARTHIK\Documents\DATASETS\Training dataset\R (208).JPG'
+image = Image.open(image_path)
+
+# Load the model
+model = load_model()
+
+# Perform object detection with manual threshold adjustment
+banana_count, image_with_boxes = detect_objects(image, model, confidence_threshold=0.6)
+
+# Display the image with bounding boxes
+image_with_boxes.show()
+
+print(f"Number of bananas detected: {banana_count}")
